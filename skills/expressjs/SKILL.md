@@ -8,8 +8,8 @@ description: Provides best practices and a reusable workflow for building Expres
 This skill helps you implement and maintain Express.js APIs in a **modular monolith** style where:
 
 - 🔹 **Routing is responsible for request validation** using **Zod**.
-- 🔹 **Controllers only contain orchestration/business logic** (no DB/raw persistence logic).
-- 🔹 **Services contain database or persistence logic**.
+- 🔹 **Controllers are classes that only contain orchestration/business logic** (no DB/raw persistence logic).
+- 🔹 **Services are classes that contain database or persistence logic**.
 - 🔹 **Every endpoint is documented with Swagger/OpenAPI**.
 
 ## When to Use This Skill
@@ -35,20 +35,24 @@ Use this skill when you are building or extending an Express.js backend and you 
 - Use **Zod schemas** to validate `req.body`, `req.query`, `req.params`, and `req.headers`.
 - Do not put business logic or database calls in route handlers.
 
-### 3) Controllers: Orchestration Only
+### 3) Controllers: Orchestration Only (OOP-Friendly)
 
 - Controllers live in `src/modules/<feature>/controllers`.
-- Controllers are responsible for:
-  - Calling services.
-  - Transforming input/output shapes if needed.
-  - Returning proper HTTP responses.
+- Prefer **classes** for controllers to enable dependency injection, easy testing, and clearer encapsulation.
+- Controllers should:
+  - Be instantiated with service dependencies (e.g., `new UserController(userService)`).
+  - Call services to perform work.
+  - Transform input/output shapes if needed.
+  - Return proper HTTP responses.
 - Controllers should not import database-layer code directly.
 
-### 4) Services: DB / Persistence Logic
+### 4) Services: DB / Persistence Logic (OOP-Friendly)
 
 - Services live in `src/modules/<feature>/services`.
+- Prefer **classes** for services so you can encapsulate related persistence methods and state.
 - Each service encapsulates persistence logic (ORM/DB queries, caches, external APIs).
-- Controllers call services and handle any errors/edge cases.
+- Services should expose clear public methods (e.g., `createUser()`, `getById()`, `updateStatus()`).
+- Controllers instantiate or receive these service instances (prefer constructor injection) and call their methods.
 
 ### 5) Swagger / OpenAPI per Endpoint
 
@@ -70,6 +74,19 @@ Use this skill when you are building or extending an Express.js backend and you 
 - Keep controllers thin: they should mainly `await service.*` and return results.
 - Avoid importing database helpers in controllers; only import the service layer.
 - Prefer shared utilities for common response patterns (e.g., `sendSuccess(res, data)`).
+
+## Standard Response Envelope
+
+To keep API responses consistent, return JSON in a single envelope shape such as:
+
+```json
+{ "status": "SUCCESS|ERROR|UNAUTHORIZED|USER_NOT_FOUND|...", "data": { ... } }
+```
+
+- Use `SUCCESS` for 2xx responses.
+- Use `ERROR` for general failures, and provide details in `data`.
+- Use specific statuses like `UNAUTHORIZED`, `USER_NOT_FOUND`, etc. when they map to known error cases.
+- Ensure the controller always sends this envelope (e.g., `res.json({ status: 'SUCCESS', data: result })`).
 
 ## When Not to Use This Skill
 
